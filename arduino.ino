@@ -9,12 +9,12 @@ uint8_t IMUAddress = 0x68;
 int16_t accX, accY, accZ, gyroX, gyroY, gyroZ, tempRaw;
 int16_t offsets[6] =  {-740, -380, -1300, 0, 0, 0};
 double cfkalib[6] = {1691.8, 1680.1, 1683.6, 1.0, 1.0, 1.0};
-uint32_t mctimer, start;
+uint32_t mctimer, start, mltimer;
 double angleX, angleY;
 boolean gpsStatus[] = {false, false, false, false, false, false, false};
 double prevLat = 56.34, prevLon = 60.54, prevAlt = 200, Hspeed = 0, Vspeed = 0;
-double speeds[8] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-uint32_t countSat = 0, cnloop = 0;
+double speeds[8] = {0,0,0,0,0,0,0,0};
+uint32_t countSat = 0, cnloop = 1;
 
 const double RAD = 3.14159265 / 180.0;
 const double rEarth = 6371000;
@@ -101,6 +101,7 @@ void setup() {
 	byte settingsArray[] = {0x04, 0xFA, 0x00, 0x00, 0xE1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 	configureUblox(settingsArray);
 	mctimer = micros();
+	mltimer = millis();
 }
 
 void loop() {
@@ -154,10 +155,10 @@ void loop() {
 				double x2 = cos(prevLat*RAD)*rEarth*sin(prevLon*RAD);
 				double y2 = cos(prevLat*RAD)*rEarth*cos(prevLon*RAD);
 				double z2 = sin(prevLat*RAD)*rEarth;
-				double curHspeed = sqrt(pow(x1-x2,2)+pow(y1-y2,2)+pow(z1-z2,2))*4;
+				double curHspeed = sqrt(pow(x1-x2,2)+pow(y1-y2,2)+pow(z1-z2,2))*(1000.0/(millis()-mltimer));
 				if (curHspeed < 50000) {
 					speeds[cnloop%4] = curHspeed;
-					speeds[cnloop%4+4] = (alt - prevAlt)*4;
+					speeds[cnloop%4+4] = (alt - prevAlt)*(1000.0/(millis()-mltimer));
 					Hspeed = 0; Vspeed = 0;
 					for (int i = 0;i<4;++i) {
 						Hspeed += speeds[i];
@@ -168,6 +169,7 @@ void loop() {
 				}
 				countSat = atoi(buff[7]);
 				prevLat = lat;prevLon = lon;prevAlt = alt;
+				mltimer = millis();
 			}
 		}
 	}
